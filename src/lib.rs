@@ -3,6 +3,8 @@ use crc32fast::Hasher;
 use std::io::{self, Error, ErrorKind, Write};
 
 mod date;
+#[cfg(feature = "tokio")]
+pub mod stream;
 #[cfg(test)]
 mod test;
 

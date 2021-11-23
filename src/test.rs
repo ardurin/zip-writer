@@ -1,5 +1,6 @@
-use crate::{Compression, DateTime, Writer};
+use crate::{stream, Compression, DateTime, Writer};
 use std::io::Write;
+use tokio::io::AsyncWriteExt;
 
 const NO_ENTRIES: &[u8] = &[
 	0x50, 0x4B, 0x05, 0x06, //
@@ -164,5 +165,35 @@ fn two_entries() {
 	assert!(writer.create_entry("2.txt", Compression::None, DateTime::default()).is_ok());
 	assert!(writer.write_all(b"Some more data\n").is_ok());
 	assert!(writer.finish().is_ok());
+	assert_eq!(data, TWO_ENTRIES);
+}
+
+#[tokio::test]
+async fn stream_no_entries() {
+	let mut data = Vec::new();
+	let mut writer = stream::Writer::new(&mut data);
+	assert!(writer.finish().await.is_ok());
+	assert_eq!(data, NO_ENTRIES);
+}
+
+#[tokio::test]
+async fn stream_one_entry() {
+	let mut data = Vec::new();
+	let mut writer = stream::Writer::new(&mut data);
+	assert!(writer.create_entry("1.txt", Compression::None, DateTime::default()).await.is_ok());
+	assert!(writer.write_all(b"Some data\n").await.is_ok());
+	assert!(writer.finish().await.is_ok());
+	assert_eq!(data, ONE_ENTRY);
+}
+
+#[tokio::test]
+async fn stream_two_entries() {
+	let mut data = Vec::new();
+	let mut writer = stream::Writer::new(&mut data);
+	assert!(writer.create_entry("1.txt", Compression::None, DateTime::default()).await.is_ok());
+	assert!(writer.write_all(b"Some data\n").await.is_ok());
+	assert!(writer.create_entry("2.txt", Compression::None, DateTime::default()).await.is_ok());
+	assert!(writer.write_all(b"Some more data\n").await.is_ok());
+	assert!(writer.finish().await.is_ok());
 	assert_eq!(data, TWO_ENTRIES);
 }
