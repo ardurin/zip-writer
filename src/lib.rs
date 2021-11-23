@@ -1,3 +1,4 @@
+#[cfg(feature = "crc")]
 use crc32fast::Hasher;
 use std::io::{self, Error, ErrorKind, Write};
 
@@ -32,6 +33,7 @@ struct Entry {
 }
 
 pub struct Writer<W: Write> {
+	#[cfg(feature = "crc")]
 	crc: Hasher,
 	entries: Vec<Entry>,
 	size: u64,
@@ -41,6 +43,7 @@ pub struct Writer<W: Write> {
 impl<W: Write> Writer<W> {
 	pub fn new(writer: W) -> Self {
 		Self {
+			#[cfg(feature = "crc")]
 			crc: Hasher::new(),
 			entries: Vec::new(),
 			size: 0,
@@ -125,8 +128,11 @@ impl<W: Write> Writer<W> {
 		let Some(entry) = self.entries.last_mut() else {
 			return Ok(());
 		};
-		entry.crc = self.crc.clone().finalize();
-		self.crc.reset();
+		#[cfg(feature = "crc")]
+		{
+			entry.crc = self.crc.clone().finalize();
+			self.crc.reset();
+		}
 		entry.size = self.size - entry.size;
 		self.writer.write_all(&entry.crc.to_le_bytes())?;
 		self.writer.write_all(&(entry.size as u32).to_le_bytes())?;
@@ -140,6 +146,7 @@ impl<W: Write> Writer<W> {
 impl<W: Write> Write for Writer<W> {
 	fn write(&mut self, data: &[u8]) -> io::Result<usize> {
 		let size = self.writer.write(data)?;
+		#[cfg(feature = "crc")]
 		self.crc.update(data);
 		self.size += size as u64;
 		Ok(size)

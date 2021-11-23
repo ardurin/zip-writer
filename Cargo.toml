@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-crc32fast = "1.2.1"
+crc32fast = { optional = true, version = "1.2.1" }
+
+[features]
+default = ["crc"]
+crc = ["dep:crc32fast"]
