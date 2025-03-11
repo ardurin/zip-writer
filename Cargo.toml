@@ -2,6 +2,7 @@
 name = "zip-writer"
 version = "0.2.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 crc32fast = { optional = true, version = "1.4.2" }
