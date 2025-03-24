@@ -11,7 +11,7 @@ flate2 = { default-features = false, features = ["zlib-rs"], optional = true, ve
 tokio = { features = ["io-util"], optional = true, version = "1" }
 
 [features]
-default = ["crc", "deflate", "tokio"]
+default = ["crc", "deflate"]
 crc = ["dep:crc32fast"]
 deflate = ["dep:flate2"]
 tokio = ["dep:tokio"]

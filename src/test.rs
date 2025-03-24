@@ -1,5 +1,6 @@
-use crate::{stream, Compression, DateTime, Zip};
+use crate::{Compression, DateTime, Zip};
 use std::io::Write;
+#[cfg(feature = "tokio")]
 use tokio::io::AsyncWriteExt;
 
 const NO_ENTRIES: &[u8] = &[
@@ -20,6 +21,17 @@ const ONE_COMPRESSED_ENTRY: &[u8] = &[
 	0x01, 0x00, 0x01, 0x00, 0x33, 0x00, 0x00, 0x00, 0x41, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "deflate")]
+#[cfg(not(feature = "crc"))]
+macro_rules! one_compressed_entry_no_crc {
+	() => {{
+		let mut data = ONE_COMPRESSED_ENTRY.to_vec();
+		data[53..57].copy_from_slice(&[0, 0, 0, 0]);
+		data[81..85].copy_from_slice(&[0, 0, 0, 0]);
+		data
+	}};
+}
+
 const ONE_UNCOMPRESSED_ENTRY: &[u8] = &[
 	0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0b00001000, 0b00001000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
@@ -31,6 +43,16 @@ const ONE_UNCOMPRESSED_ENTRY: &[u8] = &[
 	b't', 0x50, 0x4B, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x33, 0x00, 0x00,
 	0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
+
+#[cfg(not(feature = "crc"))]
+macro_rules! one_uncompressed_entry_no_crc {
+	() => {{
+		let mut data = ONE_UNCOMPRESSED_ENTRY.to_vec();
+		data[45..49].copy_from_slice(&[0, 0, 0, 0]);
+		data[73..77].copy_from_slice(&[0, 0, 0, 0]);
+		data
+	}};
+}
 
 const TWO_ENTRIES: &[u8] = &[
 	0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0b00001000, 0b00001000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -51,6 +73,18 @@ const TWO_ENTRIES: &[u8] = &[
 	0x02, 0x00, 0x02, 0x00, 0x66, 0x00, 0x00, 0x00, 0x77, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(not(feature = "crc"))]
+macro_rules! two_entries_no_crc {
+	() => {{
+		let mut data = TWO_ENTRIES.to_vec();
+		data[45..49].copy_from_slice(&[0, 0, 0, 0]);
+		data[107..111].copy_from_slice(&[0, 0, 0, 0]);
+		data[135..139].copy_from_slice(&[0, 0, 0, 0]);
+		data[186..190].copy_from_slice(&[0, 0, 0, 0]);
+		data
+	}};
+}
+
 #[test]
 fn no_entries() {
 	let mut data = Vec::new();
@@ -67,7 +101,10 @@ fn one_compressed_entry() {
 	assert!(writer.create_entry("1.txt", Compression::Deflate, DateTime::default()).is_ok());
 	assert!(writer.write_all(b"Some data\n").is_ok());
 	assert!(writer.finish().is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, ONE_COMPRESSED_ENTRY);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, one_compressed_entry_no_crc!());
 }
 
 #[test]
@@ -77,7 +114,10 @@ fn one_uncompressed_entry() {
 	assert!(writer.create_entry("1.txt", Compression::None, DateTime::default()).is_ok());
 	assert!(writer.write_all(b"Some data\n").is_ok());
 	assert!(writer.finish().is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, ONE_UNCOMPRESSED_ENTRY);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, one_uncompressed_entry_no_crc!());
 }
 
 #[test]
@@ -89,46 +129,62 @@ fn two_uncompressed_entries() {
 	assert!(writer.create_entry("2.txt", Compression::None, DateTime::default()).is_ok());
 	assert!(writer.write_all(b"Some more data\n").is_ok());
 	assert!(writer.finish().is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, TWO_ENTRIES);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, two_entries_no_crc!());
 }
 
 #[tokio::test]
+#[cfg(feature = "tokio")]
 async fn tokio_no_entries() {
 	let mut data = Vec::new();
-	let mut writer = stream::Zip::new(&mut data);
+	let mut writer = crate::tokio::Zip::new(&mut data);
 	assert!(writer.finish().await.is_ok());
 	assert_eq!(data, NO_ENTRIES);
 }
 
 #[tokio::test]
+#[cfg(feature = "tokio")]
 async fn tokio_one_uncompressed_entry() {
 	let mut data = Vec::new();
-	let mut writer = stream::Zip::new(&mut data);
+	let mut writer = crate::tokio::Zip::new(&mut data);
 	assert!(writer.create_entry("1.txt", Compression::None, DateTime::default()).await.is_ok());
 	assert!(writer.write_all(b"Some data\n").await.is_ok());
 	assert!(writer.finish().await.is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, ONE_UNCOMPRESSED_ENTRY);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, one_uncompressed_entry_no_crc!());
 }
 
 #[tokio::test]
 #[cfg(feature = "deflate")]
+#[cfg(feature = "tokio")]
 async fn tokio_one_compressed_entry() {
 	let mut data = Vec::new();
-	let mut writer = stream::Zip::new(&mut data);
+	let mut writer = crate::tokio::Zip::new(&mut data);
 	assert!(writer.create_entry("1.txt", Compression::Deflate, DateTime::default()).await.is_ok());
 	assert!(writer.write_all(b"Some data\n").await.is_ok());
 	assert!(writer.finish().await.is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, ONE_COMPRESSED_ENTRY);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, one_compressed_entry_no_crc!());
 }
 
 #[tokio::test]
+#[cfg(feature = "tokio")]
 async fn tokio_two_uncompressed_entries() {
 	let mut data = Vec::new();
-	let mut writer = stream::Zip::new(&mut data);
+	let mut writer = crate::tokio::Zip::new(&mut data);
 	assert!(writer.create_entry("1.txt", Compression::None, DateTime::default()).await.is_ok());
 	assert!(writer.write_all(b"Some data\n").await.is_ok());
 	assert!(writer.create_entry("2.txt", Compression::None, DateTime::default()).await.is_ok());
 	assert!(writer.write_all(b"Some more data\n").await.is_ok());
 	assert!(writer.finish().await.is_ok());
+	#[cfg(feature = "crc")]
 	assert_eq!(data, TWO_ENTRIES);
+	#[cfg(not(feature = "crc"))]
+	assert_eq!(data, two_entries_no_crc!());
 }

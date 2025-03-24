@@ -8,10 +8,10 @@ use std::{
 };
 
 mod date;
-#[cfg(feature = "tokio")]
-pub mod stream;
 #[cfg(test)]
 mod test;
+#[cfg(feature = "tokio")]
+pub mod tokio;
 
 pub use date::DateTime;
 
