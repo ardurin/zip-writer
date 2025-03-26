@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-async-compression = { features = ["deflate", "tokio"], git = "https://github.com/ardurin/async-compression", version = "0.4.21" }
+async-compression = { features = ["deflate", "tokio"], version = "0.4.22" }
 crc32fast = { optional = true, version = "1.4.2" }
 flate2 = { default-features = false, features = ["zlib-rs"], optional = true, version = "1.1.0" }
 tokio = { features = ["io-util"], optional = true, version = "1" }
